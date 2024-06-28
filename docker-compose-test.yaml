@@ -1,0 +1,77 @@
+version: "3.9"
+services:
+  my-map-world:
+    build:
+      context: ./my-map-world
+    environment:
+      - NODE_ENV=test
+    volumes:
+      - ./my-map-world:/app
+      - /app/node_modules
+      - /app/.next
+    networks:
+      - orbidi_network
+
+  pgadmin-orbidi:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - 5000:80
+    depends_on:
+      - db
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - orbidi_network
+
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    command: pytest
+    depends_on:
+      - db
+      - redis
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./app:/app
+    restart: on-failure
+    networks:
+      - orbidi_network
+
+  db:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    restart: on-failure
+    networks:
+      - orbidi_network
+
+  redis:
+    image: redis:latest
+    command: redis-server --requirepass 63709598
+    ports:
+      - 6379:6379
+    environment:
+      - REDIS_PASSWORD=63709598
+    networks:
+      - orbidi_network
+
+networks:
+  orbidi_network:
+
+volumes:
+  db_data:
